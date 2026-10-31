@@ -1,0 +1,81 @@
+TEZ V2 — SADE, AÇIKLAMALI PROJE
+29 Ekim 2026 | Kurulum ve çalışma
+
+1) ÖNEMLİ GÜVENLİK
+- Bu klasör, TEZ_ANA_PROJE_V2'ye müdahale ETMEZ.
+- 01 web kazıma kodu aynen korunmuştur. Tek komut dosyaları 01'i ÇALIŞTIRMAZ.
+- 02 ile 06 arasında var olan çıktı Excel/PNG dosyalarının üzerine yazılmaz.
+- Var olan guvenli_cikti.py dosyası değiştirilmedi.
+- Genelleştirme kodlarını değiştirmedik. Bu pakette bunların tamamı yoktur;
+  kendi GENELLEŞTİRME klasöründeki dosyalarını koru ve buraya kopyalama zorunluluğun yok.
+- 01_Ham_Veri içindeki Excel 27.620 türkünün tarihsel ham arşividir.
+
+2) KÜTÜPHANELER
+- Python 3 ve requirements.txt'te yazılı paketler gerekir.
+- ÜCRETLİ API / ÜCRETLİ KÜTÜPHANE YOKTUR.
+- PAKET VE STANZA MODELİ İNDİRMEK İNTERNET VERİSİ KULLANABİLİR.
+- Paketler eksikse (zorunlu değilse tekrar yükleme):
+      python -m pip install -r requirements.txt
+- Türkçe Stanza modeli bilgisayarda zaten varsa tekrar indirme.
+- Model yoksa isteğe bağlı tek seferlik indirme:
+      python -c "import stanza; stanza.download('tr')"
+- 03 kodu modeli kendiliğinden internetten indirmez.
+
+3) HANGİ DOSYAYA TIKLAMALIYIM?
+  HIZLI_TEST.cmd
+      Gerçek modeli çalıştırmadan 03 temizleme, 04 mapping, PMI matematiği,
+      100 tekrar=1, 15 türkü eşikleri ve 4 Excel/4 PNG üretimini test eder.
+  TEK_KOMUT_TEST.cmd
+      Önce hızlı testleri, sonra 02→03→04→05→06 zincirini gerçek külliyatla
+      baştan sona ayrı Testler/CALISMA_001 klasöründe çalıştırır.
+      01 kazıma kodu çalıştırılmaz. İlk çalışmada bütün 27.620 türkü kullanılır.
+  TAM_ANALIZI_CALISTIR.cmd
+      Tam analizi doğrudan bu yeni projenin normal çıktı klasörlerine yazar.
+      Eski ana TEZ_ANA_PROJE_V2 klasörüne yazmaz.
+  Aynı tam Stanza analizini iki kez gereksiz yere çalıştırma;
+  önce HIZLI_TEST.cmd ile başlamak yeterlidir.
+
+4) KOD SIRASI VE EXCEL'LER
+01_TurkuDostlariCekme.py     → turkudostlari_arsiv.xlsx  (HAZIR, ÇALIŞMAZ)
+02_OrtakVeriyiHazirla.py    → turkuler_ortak_veri.xlsx
+03_MetniTemizle_Stanza.py   → turkuler_stanza_islenmis.xlsx (8 sütun)
+04_LemmalariDuzelt.py       → turkuler_lemma_duzeltilmis.xlsx (8 sütun)
+05_TurkuBazliPMI_Hesapla.py → SEED_1 içinde 4 adet PMI .xlsx
+06_PMI_BubbleGrafikOlustur.py → Aynı klasörde 4 adet Bubble .png
+seed_listeleri.py            → SEED_1, sonra kullanıcı tanımlarsa SEED_2 ...
+
+5) AYARLAR
+05'te SEED_POS_KONTROLU=True: hedef seed sadece NOUN/ADJ olarak kabul edilir.
+05'te BAGLAM_POS_AYRIMI=True: bağlam gül_NOUN / gül_VERB ayrı sayılır.
+Ana çalıştırma dört kombinasyonu otomatik üretir. Yalnızca kodun başındaki
+ikili True/False ayarını denemek istersen 05 komutunda --mod AYARLAR kullan.
+04'te POS_LEMMA_GUVENLIK_KONTROLU=True sabittir.
+
+6) KADIN/ERKEK PMI
+Bir türküde aynı (grup, kelime[/POS]) ilişkisi kaç kez tekrarlanırsa
+tekrarlansın yalnızca 1 kez sayılır. Kadın/erkek sayımları bağımsızdır.
+15 genel türkü, 15 birlikte türkü eşiği, ±5 pencere, alfa=0.5 sabittir.
+İlk 15 frekans filtresi NLTK'nin olasılık evrenini belirler; son 15 filtresi
+yalnız sonuç Excel'inde gösterilecek kelimeleri seçer.
+Yumuşatmada NLTK pmi hesapları 2 x V tablosunun tutarlı marjinallerini kullanır.
+İstatistikler Excel'de, grafikler PNG'de bulunur.
+
+7) ÇALIŞTIRMA TESTLERİNİN SINIRLARI
+Bu paketin hazırlanmasında otomatik testler ve 30 türkülük gerçek Excel
+ile 04→05→06 denendi. Kısa örnekte 15 birlikte türkü eşiği yüzünden
+0 sonuç vardı; bu, dört boş şablon grafik üretebilir.
+Ayrı 60 sentetik türküde dört Excel ve dört dolu PNG üretildi.
+Stanza bu geliştirme ortamında kurulu olmadığı için 03 gerçek model
+ve 27.620 türkülük 02→06 uçtan uca çalışma burada doğrulanamadı.
+Kendi bilgisayarında TEK_KOMUT_TEST.cmd bu sınırı test eder.
+
+8) İLERİDE SEED LİSTESİNİ DEĞİŞTİRMEK
+02_PMI_CinsiyetAnalizi/1kodlar/seed_listeleri.py içinden SEED_2 gibi
+ayrı yeni kayıt ekle. Ana PMI kodundaki varsayılan SEED_DENEYI adını
+veya komuttaki --seed parametresini buna ayarla.
+Böylece SEED_1 sonuçları SEED_2 sonuçlarıyla karışmaz.
+
+9) DESTEK DOSYASI
+01_VeriHazirlama/3_Kaynaklar/eski_kayit_sirasi.csv yalnızca tarihsel
+kayıt sırasını ve orijinal sözleri SHA256 ile denetleyen REFERANSTIR;
+analiz girdi/çıktısı değildir, yeni CSV üretilmez.

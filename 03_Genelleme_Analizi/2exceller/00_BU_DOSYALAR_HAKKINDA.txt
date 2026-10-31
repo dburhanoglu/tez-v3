@@ -1,0 +1,18 @@
+GENELLEME ANALIZI DOSYA YAPISI
+
+Genelleme kodlari ana corpus girdisi olarak:
+
+01_VeriHazirlama/2_veri/03_Nihai_Veri/
+temiz_veri_lemmatize_FINAL.xlsx
+
+dosyasini kullanir.
+
+Bu nedenle 03_Genelleme_Analizi/2exceller klasorunde
+ayri bir temiz_veri_lemmatize_FINAL.xlsx kopyasi tutulmaz.
+
+2exceller klasoru;
+- insan etiketli checkpoint dosyalarini,
+- aktif ogrenme secim kayitlarini,
+- performans raporlarini,
+- nihai tahmin sonuclarini
+saklar.

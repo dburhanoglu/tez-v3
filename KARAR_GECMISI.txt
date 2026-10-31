@@ -1,0 +1,950 @@
+TEZ_ANA_PROJE_V2 — MİMARİ KARAR DEFTERİ
+Sürüm: 1.0 — 25 Ekim 2026
+Durum: ANA MİMARİ ONAYLANDI. KODLAMA VE DOĞRULAMA HENÜZ YAPILMADI.
+
+AMAÇ
+Türkü veri hazırlama kodları kısa, anlaşılır ve birbirine bağlı olacak. Her ana kod bir Excel okuyup bir ana Excel üretecek. Genelleştirme, PMI'ye özel işleme kodlarına bağımlı olmayacak. Eski veriler, genelleştirme etiketleri ve çalışmalar korunacak.
+
+1. TEMEL KURALLAR
+- Mevcut 27.620 türkünün yeniden çekilmesi yok. TurkuDostlariCekme1.py ve ürettiği ham Excel sabit; bunlara dokunulmayacak.
+- Her ana veri hazırlama kodu bir ana Excel üretir. Gereksiz beşinci aşama, yeni ortak korpus Excel'i veya çok sayıda test kodu oluşturulmayacak.
+- Her aşama tek bir açık görev üstlenecek. Kullanılmayan sütunlar, yinelenen normalizasyon, pasif map/stopwords yüklemeleri ve gereksiz yardımcı çıktılar kaldırılacak.
+- Ana algoritmalar, PMI formülü, pencere/eşikler ve genelleştirme modeli ancak ayrıca onaylanırsa değiştirilecek. Açıkça onaylanan filtre ve mapping iyileştirmelerinin sonuçları değiştirebileceği kabul ediliyor.
+- Python kodları ve mevcut Excel'ler kullanıcı ayrıca uygulama izni verene kadar değiştirilmeyecek.
+- Her yeni mimari önerisi kullanıcı açıkça onaylamadan bu deftere kesin karar olarak eklenmeyecek.
+- Eski sürümler ve sonuçlar saklanacak. Git referansı: 109d3b2, dal 04_calismasi. Git, takibe alınmamış Excel dosyalarının yedeği yerine geçmez.
+
+2. ONAYLI DÖRT KODLU VERİ AKIŞI
+01 — TurkuDostlariCekme1.py
+Girdi: Kaynak web sitesi (tarihsel olarak tamamlanmış).
+Çıktı: turkudostlari_arsiv.xlsx
+Kural: Kod ve ham dosya SABİT; yeniden çalıştırılmayacak.
+
+02 — OnIsleme_Nida_Normalizasyon.py
+Girdi: turkudostlari_arsiv.xlsx
+Çıktı: turkudostlari_FINAL.xlsx
+Görev: İki çalışma için ORTAK veri kontrolü; gerekli sütunları, bağlantı tekilliğini ve veri bütünlüğünü denetlemek; orijinal Sözler, Başlık, Yöre, Link ve metaveriyi korumak. PMI'ye özgü metin işlemleri bu kodda olmayacak.
+DAL AYRIMI BURADA: Genelleştirme bu Excel'deki orijinal Sözler sütunundan devam eder. PMI aynı Excel'i 03'e gönderir.
+
+03 — temizleme_ve_lemmatizasyon2.py
+Girdi: turkudostlari_FINAL.xlsx
+Çıktı: temiz_veri_lemmatize.xlsx
+Görev: SADECE PMI metnini hazırlamak. Mevcut 02'den bibliyografik satır temizliği, parantez ayrıştırma ve Yalın Sözler/Nidalar işlemlerini buraya taşımak; tek bir gerçek Stanza girdi normalizasyonu kullanmak; Stanza ile token, lemma, POS (UPOS) ve varsa morfoloji (FEATS) üretmek.
+
+04 — HatalıTokenDuzeltme3.py
+Girdi: temiz_veri_lemmatize.xlsx
+Çıktı: temiz_veri_lemmatize_FINAL.xlsx
+Görev: Gerekli ve güvenli lemma düzeltmelerini yapmak; token sırası, lemma, POS ve FEATS bilgilerini korumak. KADIN/ERKEK SEED KARARI BU KODDA VERİLMEYECEK.
+
+Sonraki kod: Istatistiksel_Analiz_PMI4.py, 04'ün nihai Excel'ini okuyacak.
+
+3. GENELLEŞTİRME KOLU
+- Genelleştirme `turkudostlari_FINAL.xlsx` içindeki ORİJİNAL `Sözler`, `Başlık`, `Yöre` ve gerekli kimlik bilgileriyle çalışır.
+- PMI'ye özel `Yalın Sözler`, Stanza lemması ve son Excel'i kullanmaz; 03 ve 04'ün bitmesini beklemez.
+- Başlangıç aday seçimi, mevcut etiketler, aktif öğrenme, TF-IDF sözcük/karakter özellikleri ve LogisticRegression yöntemleri korunacak.
+- Önemli: Ham arşiv ile eski nihai dosyanın türkü sırası farklı; yüklenen `turkudostlari_FINAL.xlsx` ise eski nihai Excel'le aynı kayıt sırasına sahipti. Yeni 02'nin de bu sıra/ID ve etiket eşleşmesini koruması ZORUNLU. Yalnız dosya yolunu değiştirmek yeterli kabul edilmeyecek.
+- Başlangıç aday kodu ile son külliyat kodunun farklı tekilleştirme yöntemleri yanlışlıkla birleştirilmeyecek. Önce/sonra sonuçlar karşılaştırılacak.
+
+4. PMI'YE ÖZEL 03 KODU
+- `Sözler` orijinal biçimiyle korunur; PMI temizliği bu sütunu değiştirmeden ayrı alanlarda yapılır.
+- Bibliyografik satır/etiket temizliği ve parantez ayrıştırma 03'ün işidir. `Yalın Sözler` kullanılır; `Nidalar` yalnız anlamlı denetim alanı olduğu için saklanabilir (parantezdeki her şey nida olmak zorunda değil).
+- `NLP_Hazir_Sozler` gibi Stanza'ya fiilen girmeyen yinelenmiş normalizasyon sütunu üretilmez.
+- Stanza'nın gerçekten işlediği metin tek bir normalizasyon akışından geçer; adımların eski sonuçla ilişkisi test edilir.
+- Stanza'nın orijinal token, lemma, UPOS ve varsa FEATS bilgileri aynı kelime sırasıyla saklanır.
+- Kullanıcının onayladığı değişiklik: `len(secilen_lemma) < 3` filtresi kaldırılacak. `su`, `el`, `al` gibi kısa lemmalar sırf kısa diye silinmeyecek.
+- Kullanıcının onayladığı değişiklik: `isalpha()` filtresi kaldırılacak; onun yerine `PUNCT`, `SYM`, `NUM` token elemesi KONMAYACAK. Noktalama ve sayılar otomatik çıkarılmayacak. Bu tercih PMI penceresine veya kelime listesine etkide bulunabileceğinden testte açıkça raporlanacak.
+- Mevcut metin temizleme işlemleri otomatik olarak toptan silinmez; bunlar ayrı ayrı gerçek işlevine göre sadeleştirilir.
+
+5. 04 KODUNDA GÜVENLİ MAPPING
+- Stanza zaten doğru sonuç veriyorsa lemma gereksiz yere değiştirilmez.
+- Kesin, anlamı doğrulanmış çekimli/yöresel biçimler gerektiğinde düzeltilir.
+- Çok anlamlı sözcüklerde mümkünse POS, morfoloji ve bağlam kontrol edilir. Emin olunmayan bir kelime zorla başka anlama dönüştürülmez.
+- `kızlar` kız isminin çoğulu olabilir; `bana kız` fiildir. Sırf yazılış benzediği için ikisi kadın seed'i kabul edilmez.
+- `allı gelin` isim olabilir; `buraya gelin` fiildir. `gelinlik` ve `gelinmez` otomatik `gelin` kadın seed'ine dönüştürülmez.
+- `yar` / `yâre` (sevgili/yara), `mahzun` / `Mahzuni`, `kına` / `kınamayın`, yöresel `gız` gibi riskli dönüşümler dikkatle ele alınacak.
+- 04 sadece lemmayı düzeltir ve ilgili token/POS bilgilerini muhafaza eder; ayrı `seed_etiketleri` sütunu ÜRETMEZ.
+
+6. PMI ANALİZİ VE SEED LİSTELERİ
+- Kadın/erkek seed listelerinin TEK kaynağı `Istatistiksel_Analiz_PMI4.py` olacak.
+- Mevcut kadın seed listesi: kadın, kız, gelin, ana, bacı, avrat, hanım, hatun.
+- Mevcut erkek seed listesi: erkek, oğlan, kardeş, gardaş, bey, paşa, yiğit, ağa.
+- PMI nihai Excel'deki `temiz_metin_lemma` ile kelime kelime eşleşen `upos_listesi` ve gerektiğinde `feats_listesi` bilgisini okuyacak. Seed sözcüğünün gerçek kullanımı POS/bağlamla değerlendirilerek kadın/erkek seed olup olmadığına PMI kodu karar verecek.
+- `kardeş` gibi cinsiyet açısından nötr olabilen mevcut seed sözcükleri ayrıca bilimsel olarak değerlendirilecek; liste sessizce değiştirilmeyecek.
+- PMI'nin hesaplama yöntemi, türkü başına toplam ağırlığı eşitleme kuralı, ±5 bağlam penceresi, aday kelimenin en az 15 türküde görülmesi ve en az 3 ham birlikte görünme sınırı korunacak.
+- Mevcut PMI çıktı ve önceki makale/tez sonuçları yeni sonuçlarla karşılaştırılacak. POS tabanlı seed seçimi ve onaylı filtre kaldırmaları nedeniyle yeni PMI sonuçları farklı olabilir.
+
+7. EXCEL'DEKİ KELİME–LEMMA–POS HİZASI (SON ONAY)
+- 03 ve 04'te aynı türküye ait kelime, lemma, UPOS ve gerekiyorsa FEATS dizilerinin SIRASI VE UZUNLUĞU eşleşecek.
+- Nihai `temiz_metin_lemma` sütunu korunacak; PMIDe kullanılacak lemma dizisiyle UPOS konumları birebir hizalı olacak.
+- Örnek: `allı gelin buraya gelin` dizisinde birinci `gelin` NOUN ve ikinci `gelin` VERB olarak çözümlenebilir; bu Stanza için garanti değil, kontrol edilecek örnektir.
+- PMI kodu sayı/konum uyuşmazlığında sessizce hesaplama yapmayacak; açık hata veya kontrol raporu verecek.
+- Listelerin Excel hücrelerinde TAM teknik gösterimi kodlama sırasında seçilecek; ayrı Excel veya gereksiz yeni aşama oluşturulmayacak. `text.split()` ile boşluklu lemma ya da noktalama nedeniyle hizanın bozulması özellikle denetlenecek.
+
+8. KODLAMA VE TEST KURALLARI
+- Kodlar kısa, kolay okunur, açık girdi/çıktılı olacak; gereksiz yardımcı fonksiyonlar, tekrar eden işlemler ve çoklu aynı amaçlı çıktı dosyaları kaldırılacak.
+- Ana proje ve geçmiş veriler üzerine doğrudan yazılmayacak; önce güvenli çalışma/test kopyasında doğrulanacak.
+- Tek kontrollü CMD test akışı tercih edilecek; durmadan yeni test scriptleri ve `_V1`, `_V2` dosyaları üretilmeyecek.
+- Kontroller: 27.620 kayıt, kaynak Link/Başlık/Yöre/Sözler ve sıra/kimlik eşleşmesi; genelleştirme etiketleri ve sonuçları; 03→04 token/POS/lemma hizası; mapping örnekleri; filtrelerin gerçekten neleri değiştirdiği; eski/yeni PMI sayıları.
+- Stanza model ve sürüm farklılığı eski lemmaların birebir yeniden üretilmesini etkileyebilir; sonuçlar testte dürüstçe karşılaştırılacak.
+- Ücret doğurabilecek API/hizmet/işlem varsa kullanıcıya ÖNCEDEN BÜYÜK HARFLE UYARI verilecek.
+
+9. BİLİNÇLİ OLARAK VAZGEÇİLEN FİKİRLER
+- Beş ana veri hazırlama aşaması oluşturmak.
+- Ayrı `01_Ortak_Korpus.xlsx` üretmek.
+- Genelleştirmeyi PMI lemmatizasyonunun son Excel'ine bağlamak.
+- 04'e kadın/erkek seed listelerini veya `seed_etiketleri` sütununu koymak.
+- `gelin` kelimesini tüm kullanımlarıyla seed havuzundan çıkarıp atmak.
+- `isalpha()` yerine `PUNCT/SYM/NUM` filtresi eklemek.
+- Tarihsel kod/Excel'leri kontrolsüz değiştirmek.
+
+10. UYGULAMA ÖNCESİ HÂLÂ DOĞRULANACAK KONULAR
+- 02 kodunun eski etiket/ID/sıra düzenini aynen üretmesi.
+- Stanza'nın `m'olar`, `hakk'a` gibi kesmeli ifadeleri nasıl tokenlaştırdığı; tokenların gerçek UPOS/lemma sonuçları.
+- Noktalama/sayı tokenları korunursa PMI bağlam penceresine ve aday sözcüklere sayısal etkisi.
+- Güvenli mapping sözlüğündeki hangi satırların kalacağı, hangilerinin koşula bağlanacağı.
+- POS tek başına yetmediğinde belirsiz seed kullanımları için sade karar kuralı.
+- Token/lemma/UPOS listelerinin Excel'de teknik gösterimi ve `temiz_metin_lemma` ile kesin hizası.
+- Eski ve yeni genelleştirme sonuçlarının eşleşmesi; yeni PMI farklarının raporlanması.
+Bu başlıklar ONAYLANMIŞ MİMARİNİN test/uygulama ayrıntılarıdır; henüz yapılmış işler değildir.
+
+SON DURUM
+25.10.2026: Kullanıcı dört kodlu mimariyi, 02/03 görev ayrımını, 03 normalizasyonunu, kısa lemma ve alfabetik/PUNCT/SYM/NUM filtrelerinin kaldırılmasını, POS/FEATS korunmasını, 04'te güvenli mapping yapılmasını, seed listelerinin yalnız PMI kodunda kalmasını ve kelime–lemma–POS hizası kontrolünü ONAYLADI.
+HENÜZ hiçbir Python kodu veya Excel dosyası düzenlenmedi. Kullanıcı ayrıca kodlamaya izin verince güvenli test kopyasında başlanacak.
+
+--------------------------------------------------------------
+26 EKİM 2026 — ONAYLANAN YENİ KARAR: PMI'DE POS KONTROLÜ AÇ/KAPAT VE İKİ YÖNTEM KARŞILAŞTIRMASI
+
+GEREKÇE:
+- 500 rastgele türkülük denetimde Stanza'nın bazı kadın seed kullanımlarını ADJ/VERB olarak etiketleyip dışlayabildiği; bazı erkek seed kullanımlarında da anlamsal hatalar olabildiği görüldü.
+- POS kullanımının etkisi, yöntemin geri kalanını değiştirmeden ayrıca ölçülmeli. POS'suz sonuç otomatik olarak daha doğru, POS'lu sonuç da otomatik olarak daha güvenilir kabul edilmeyecek.
+
+ONAYLANAN TASARIM:
+1. AYRI İKİ PMI KODU YAZILMAYACAK. Tek `Istatistiksel_Analiz_PMI4.py` içerisinde tek ve kolay anlaşılır bir seçim olacak: `POS_KONTROLU = True` (POS'lu) veya `POS_KONTROLU = False` (POS'suz).
+2. POS'lu mod: PMI aşamasında seed adayını kabul/ret kararında hizalı lemma + POS (gerekiyorsa FEATS) kuralları işletilecek.
+3. POS'suz mod: PMI aşamasındaki POS-temelli seed kabul/ret kontrolü devre dışı kalacak; seed adayları nihai lemmaya ve PMI kodundaki mevcut seed listelerine göre değerlendirilecek. Bu mod 03 Stanza işlemini veya 04'ün daha önce yapılmış lemma düzeltmelerini geri ALMAZ; yalnız PMI seed elemesi değişir.
+4. Karşılaştırmada SAME input (`temiz_veri_lemmatize_FINAL.xlsx`), aynı 500 örneklem / gelecekte aynı tam korpus, aynı kadın/erkek seed listeleri, ±5 bağlam penceresi, türkü ağırlıkları, PMI formülü ve minimum eşikler korunacak. Yalnız PMI'de POS kontrolü farklı olacak.
+5. POS'lu ve POS'suz sonuçlar farklı isimlerle saklanacak; birbirinin üzerine yazılmayacak. İki modun kadın/erkek seed sayıları, kelime sayıları/sıralamaları, PMI farkları ve anlamlı/şüpheli örnekleri karşılaştırılacak.
+6. 04 `HatalıTokenDuzeltme3.py` içinde cinsiyet seed etiketi veya listesi oluşturulmayacak; seed listeleri sadece PMI kodunda kalacak.
+7. Bu karar bir UYGULAMA TASARIM KARARIDIR. Henüz bu madde nedeniyle gerçek ana proje kodu değiştirilmedi; önce güvenli test kopyasında uygulanacak ve doğrulanacak.
+
+SON TEST DURUMU:
+- Rastgele 500 türkülük Stanza/POS inceleme testi tamamlandı: 9.658 dize, 42.992 token, 1.257 seed/risk adayı. Dize eşleştirmesinde 2 token sorunlu.
+- Aynı 500 türküde mevcut POS'lu PMI kurallarıyla ilk denemede 121 sonuç kelimesi elde edildi; bu, nihai tam-korpus sonucu değildir.
+- 27.620 türkülük tam PMI testi, iki modun yan yana doğrulanması, genelleştirme karşılaştırması ve ana projeye aktarım henüz tamamlanmadı.
+
+NOT: Önceki 25 Ekim tarihli 'kodlama yapılmadı' kayıtları tarihsel kayıttır. Son durum için bu 26 Ekim ekini esas al.
+
+--------------------------------------------------------------
+26 EKİM 2026 — ONAYLANAN EK KARAR: HER PMI MODU İÇİN AYRI EXCEL VE AYRI BUBBLE GRAFİK
+
+KULLANICI TALEBİ VE KARAR:
+- Tek PMI analiz kodu korunacak; `POS_KONTROLU = True` ve `False` seçenekleriyle iki yöntem test edilebilecek.
+- POS'lu analiz için ayrı bir Excel ve ayrı bir bubble grafik üretilecek.
+- POS'suz analiz için ayrı bir Excel ve ayrı bir bubble grafik üretilecek.
+- Dört çıktı birbirine karışmayacak ve herhangi biri diğerinin üzerine yazılmayacak.
+
+ÇIKTI ADLARI (ÖNERİLEN VE KAYDEDİLEN STANDART):
+1. `01_PMI_ve_Istatistik_Sonuclari_POSLU.xlsx`
+2. `01_PMI_ve_Istatistik_Sonuclari_POSSUZ.xlsx`
+3. `PMI_Bubble_POSLU.png`
+4. `PMI_Bubble_POSSUZ.png`
+
+KARŞILAŞTIRILABİLİRLİK ŞARTLARI:
+- İki mod aynı nihai Excel'i, aynı veri örneklemini, seed listelerini, PMI formülünü, ±5 pencereyi, türkü ağırlıklarını ve eşikleri kullanacak. Yalnızca PMI aşamasındaki POS-temelli seed kabul/ret koşulu farklı olacak.
+- Bubble grafikler, iki analizde aynı görsel kurallarla üretilecek: PMI ekseni/anlamı, sabit ya da ortak hesaplanan eksen aralıkları, nokta/bubble büyüklüğünün anlamı, kelime seçme/sıralama kuralı ve renklerin anlamı aynı olacak. İki grafiğin verisi birbirinden farklı olabilir; bu farklar raporlanacak.
+- Grafikte karşılaştırılamayan (örneğin bir cinsiyet için PMI değeri hesaplanamayan) kelimeler görselleştirilirken tutarlı ve açık bir kural izlenecek; sayısal değer uydurulmayacak.
+- Grafiği mevcut BubbleGrafik6.py mantığından yararlanarak aynı kodun iki ayrı sonuç Excel'ine uygulanması tercih edilir. İki bağımsız, farklı kurallı grafik kodu oluşturulmayacak.
+- Tezde kullanılmadan önce iki grafik ve Excel hem hesaplama hem de yöntem anlatımı açısından denetlenecek. POS'lu veya POS'suz yöntem peşinen üstün kabul edilmeyecek.
+
+UYGULAMA DURUMU:
+Bu bir TASARIM KARARIDIR. Şu aşamada kodlar değiştirilmedi, yukarıdaki dört yeni sonuç dosyası henüz üretilmedi. Önce aynı 500 türkülük test verisinde doğrulanacak, daha sonra tam korpusa geçilip geçilmeyeceği kararlaştırılacak.
+
+--------------------------------------------------------------
+26 EKİM 2026 — SONRAKİ UYGULAMA GÖREVİ (KULLANICI TEKRAR ONAYI)
+- Genel veri akışında 01-04 veri hazırlama aşamaları; 05 `Istatistiksel_Analiz_PMI4.py` (PMI); 06 `BubbleGrafik6.py` (grafik) olarak izleniyor.
+- Bir sonraki kodlama işi yalnızca 05 ve 06'nın güvenli TEST kopyasında: 05 içinde `POS_KONTROLU = True/False` seçimi, POS'lu ve POS'suz iki farklı Excel; 06 içinde bu Excel'lerden karşılaştırılabilir, ayrı adlı iki bubble grafik.
+- Kullanıcı, bu özelliğin karar defterinde bir *yapılacak iş* olarak da kalmasını tekrar istedi. Önce 500 türkülük aynı örneklemle test; ana kodlara taşımak ve 27.620 türkülük tam çalıştırma sonradan kararlaştırılacak.
+- Bu kayıt yalnızca planı teyit eder; kodlara uygulanmış olduğunu ifade ETMEZ.
+
+--------------------------------------------------------------
+26 EKİM 2026 — ONAYLANAN EK TASARIM VE 01–02 TEST PLANI
+
+TEMEL ÜÇ KURAL:
+1. Amacı olmayan, veri hattına hizmet etmeyen işlem/sütun/çıktı üretilmeyecek; gereksiz olan çıkarılacak.
+2. Kodlar kısa, açık, kullanıcı tarafından okunabilir, anlaşılır ve kolay test edilebilir olacak.
+3. Her aşama girdi -> işlem -> çıktı şeklinde ilerleyecek; gereksiz yan ürün oluşturulmayacak.
+
+01–02 KAPSAMI:
+- 01 TurkuDostlariCekme1.py, 27.620 kayıtlık ham arşivle birlikte sabit tutulacak; yeniden veri kazıma yapılmayacak veya mevcut veri üzerine yazılmayacak. Yeniden çalıştırma da planlanmıyor.
+- 02 OnIsleme_Nida_Normalizasyon.py, ham arşivden yalnızca ortak turku dostlari FINAL veri setini üretecek. Gerekli alanlar, özgün Sözler ve bağlantılar korunacak; tarihsel kayıt sırası eski etiket/ID uyumu için doğrulanacak.
+- PMI'ye özgü parantez/bibliyografya temizleme, Nidalar, Yalın Sözler, NLP normalizasyonları 02'de tutulmayacak; gerekli olanları 03 yapacak. İşlevsiz ek sütunlar üretilmeyecek.
+- Genelleştirme kodlarının doğrulama/yeniden yazımı şimdilik durduruldu; geçmiş etiket ve model çıktıları korunacak.
+- 01/02 testleri ana proje dışındaki, bağımsız TEZ_V2_01_02_TEST klasöründe yürütülecek. Testte tek nihai 02 Excel çıktısı ve ihtiyaç duyulan eski sıra referansı kullanılacak.
+- 02 çıktısı için 27.620 kayıt, boş/tekrarlanan Link kontrolü, Başlık/Yöre/Sözler özgünlüğü, eski sıra eşitliği ve sütunların amaçlılığı denetlenecek. Kontrol başarısızsa ana proje dosyaları değiştirilmeyecek.
+
+GELECEK SEED DENEYLERİ (05 PMI KODU):
+- Tek PMI kodu ve tek seed tanımlama yeri korunacak. TEST_1, TEST_2, TEST_3 gibi isimlendirilmiş seed listeleri ileride aynı kodda seçilebilir olacak.
+- Seed seti seçimi, POS_KONTROLU True/False ayarından bağımsız olacak: aynı seed listesiyle POS'lu ve POS'suz sonuçları karşılaştırmak mümkün olacak.
+- Deney/seed seti adı, ayrı Excel ve bubble grafik çıktı dosyası adlarında yer alacak; hiçbir farklı deneyin sonucu diğerinin üzerine yazılmayacak.
+- Henüz TEST_2/TEST_3 seed sözcükleri belirlenmedi ve hiçbir seed listesi değiştirilmedi. Bu tasarım 05/06 aşamasında uygulanacak; 01–04'e seed karar mekanizması eklenmeyecek.
+
+DURUM: TASARIM VE TEST PLANI KAYDEDİLDİ. BU EK, ANA PROJE KODLARININ GÜNCELLENDİĞİ VEYA YENİ TESTİN ÇALIŞTIRILDIĞI ANLAMINA GELMEZ.
+
+--------------------------------------------------------------
+26 EKİM 2026 — ÖN AĞAÇ TASLAĞI: ÜÇ ANA BÖLÜMLÜ SADE PROJE MİMARİSİ
+
+STATÜ: ÖN AĞAÇ TASLAĞI OLARAK KAYDEDİLDİ.
+Bu ağaç nihai dosya/klasör oluşturma veya kod değişikliği onayı değildir.
+Kullanıcı, üç ana bölümün eski mimarideki gibi korunmasını ve iç yapıların
+yalnızca gerekli dosyalarla sadeleştirilmesini istedi. Boş iskeletin
+oluşturulması da ayrıca onaylanana kadar yapılmayacak.
+
+ÖN AĞAÇ TASLAĞI:
+
+TEZ_V2_YENI_TEST/
+|
+|-- 01_VeriHazirlama/
+|   |-- 1kodlar/
+|   |   |-- 01_TurkuDostlariCekme.py
+|   |   |-- 02_OnIsleme.py
+|   |   |-- 03_Lemmatizasyon.py
+|   |   `-- 04_LemmaDuzeltme.py
+|   |-- 2_veri/
+|   |   |-- 01_Ham_Veri/
+|   |   |-- 02_Islenmis_Veri/
+|   |   `-- 03_Nihai_Veri/
+|   `-- 3_Kaynaklar/
+|
+|-- 02_PMI_CinsiyetAnalizi/
+|   |-- 1kodlar/
+|   |   |-- 01_PMI_Analizi.py
+|   |   |-- 02_BubbleGrafik.py
+|   |   `-- seed_listeleri.py
+|   `-- 2_sonuclar/
+|
+|-- 03_Genelleme_Analizi/
+|   |-- 1kodlar/
+|   `-- 2_sonuclar/
+|
+`-- KARAR_DEFTERI.txt
+
+NEDEN BU TASLAK SEÇİLDİ?
+1. Ana proje üç anlamlı çalışma alanında kalıyor:
+   - 01_VeriHazirlama: Ortak veri hazırlama; PMI'ye ve genelleştirmeye
+     ayrı ayrı hizmet ediyor.
+   - 02_PMI_CinsiyetAnalizi: Seed/POS kontrollü PMI ve görselleştirme.
+   - 03_Genelleme_Analizi: Kendi analiz kodları ve sonuçları.
+   Bu ayrım mevcut mimariyi koruyor ve iki araştırmayı birbirine bağımlı
+   hâle getirmiyor.
+
+2. Alt klasörlerin işlevi basit: kod, veri, gerekli kaynak, sonuç.
+   Rapor/log veya 'sonuç üzerine çalışmalar' gibi ayrıca klasörler,
+   şu aşamada zorunlu olmadığı sürece iskelete eklenmiyor.
+   NOT: Doğrulama kanıtları, hata kayıtları veya bilimsel
+   yeniden üretilebilirlik için gerekli dosyalar kontrolsüz silinmeyecek.
+   Sonradan ihtiyaçları doğrulanırsa uygun yere alınacak.
+
+3. Kodların bölüm içindeki çalıştırma sırası 01, 02, 03... olarak açık.
+   Bu, tüm projenin tek küresel numaralandırması değildir: örneğin
+   veri hazırlama bölümünün 01–04 kodları ile PMI bölümünün 01–02
+   kodları ayrı numara dizileridir. Böylece klasör bazında sıra anlaşılır.
+
+4. Her aşama yalnızca gerekli sütun/işlem/çıktıyı üretecek; girdisi ve
+   çıktısı açık olacak. Yinelenen sütunlar ancak aşağıdaki aşamaların
+   gerçekten kullanmadığı doğrulanınca kaldırılacak.
+
+5. Seed denemeleri TEST_1, TEST_2, TEST_3 gibi tek noktadan yönetilebilecek;
+   POS_KONTROLU True/False bağımsız kalacak. 'seed_listeleri.py'
+   burada ÖNERİLEN tek seed kaynağıdır. Önceki kararda seed listeleri
+   PMI kodunun içindeydi; ayrı dosyaya alınması henüz kesinleştirilmedi.
+   Kesinleştirilirse PMI kodu sadece bu dosyadan okuyacak; çift kaynak
+   oluşturulmayacak.
+
+6. PMI'nin her deney ve POS modu için Excel ve grafik çıktıları
+   ayrı adlandırılacak; sonuçlar birbirinin üzerine yazılmayacak.
+
+7. 03_Genelleme_Analizi şimdilik yalnızca BOŞ TASLAK iskelet.
+   Eski genelleştirme kodları, etiketler ve sonuçlar bu kararla
+   taşınmış, silinmiş veya değiştirilmiş sayılmıyor.
+
+DİĞER KORUMA VE TEST KURALLARI:
+- TEZ_V2_YENI_TEST, ana TEZ_ANA_PROJE_V2 klasörünün YANINDA,
+  ondan bağımsız kurulacak. Ana projeye dokunulmayacak.
+- 01 kodu ve mevcut ham arşiv sabit; 01 veri çekme yeniden çalışmayacak.
+- 02 testinin 26 Ekim 2026 tarihinde kullanıcı tarafından çalıştırıldığı
+  ve '02 TAMAM | 27620 turku | Orijinal sozler ve eski sira dogrulandi'
+  mesajıyla başarıyla sonuçlandığı bildirildi. Çıktı:
+  CIKTI/turkudostlari_FINAL.xlsx.
+- 03/04 sütun azaltma kararı sonraki aşamaların bağımlılıkları
+  incelenmeden uygulanmayacak; 'lemmalar' / 'temiz_metin_lemma'
+  gerekliliği hâlâ değerlendirilecek.
+- Ana PMI matematiği, ±5 pencere ve diğer onaylı eşikler değiştirilmez.
+- Yeni mimarinin klasörleri, boş kod dosyaları, gerçek kod içerikleri
+  ve yeni analiz çıktıları bu kayıtla OLUŞTURULMADI.
+
+SONRAKİ ADIM:
+Kullanıcı açıkça 'boş iskeleti oluştur' diye onay verirse bu
+ön ağaçtan yalnız klasörler ve boş kod dosyaları hazırlanacak.
+Gerçek kodlar daha sonra tek tek incelenip güvenli testte yazılacak.
+
+--------------------------------------------------------------
+26 EKİM 2026 — YENİ TEST İSKELETİNE KOD YAZILDI (ANA PROJE DEĞİŞMEDİ)
+
+Bu ek, önceki 'henüz kod yazılmadı' kayıtlarını yeni test kopyası bakımından
+GÜNCELLER. Tarihsel kararlar silinmedi. Çalışma kopyası:
+TEZ_V2_KODLU_TEST (TEZ_ANA_PROJE_V2 klasörünün yanında kurulmalıdır).
+
+YAZILAN TEST KODLARI
+01_VeriHazirlama/1kodlar/
+  01_TurkuDostlariCekme.py: tarihsel kod korunarak kopyalandı; sadece
+      TEST kopyasının başına yanlışlıkla çalıştırmayı engelleyen kilit
+      eklendi. Yeniden veri kazıma yapılmadı, ana koda dokunulmadı.
+  02_OnIsleme.py: daha önce başarılı olan referans-hash/sıra denetim kodu;
+      çıktının üzerine yazmama kontrolü eklendi.
+  03_Lemmatizasyon.py: mevcut test Stanza kodu esas alındı. 10 gerekli
+      sütun; Nidalar/NLP_Hazir_Sozler ve yinelenen ham metaveri sütunları
+      çıkartıldı. Token/lemma/UPOS/FEATS hizası korunuyor.
+  04_LemmaDuzeltme.py: 500 testindeki ihtiyatlı harita/mapping aynen
+      kullanıldı. 10 sütun ve tek Excel. Yeni seed kararı veya rapor/CSV yok.
+02_PMI_CinsiyetAnalizi/1kodlar/
+  seed_listeleri.py: TEST_1 kadın/erkek seed kümelerinin TEK kaynağı.
+  01_PMI_Analizi.py: ayrı deney ve POS modu; aynı ±5, 15, 3, ağırlık,
+      log2 PMI. İki ayrı Excel. Karşılaştırılamayan PMI farkları NaN kalır.
+  02_BubbleGrafik.py: her iki sonuçtan tek kodla iki karşılaştırılabilir PNG.
+03_Genelleme_Analizi: YENİ TESTTE BOŞ bırakıldı; eski proje korunuyor.
+
+NETLEŞEN ÖN TASLAK KARARI:
+- seed_listeleri.py tek seed tanımlama yeridir. 01_PMI_Analizi.py sadece
+  oradan okuyacak. Eski defterdeki 'seed kodun içinde' kuralının amacı
+  tek kaynaktı; son onaylanan ağaç gereğince kaynak ayrı dosyada tutuldu.
+- TEST_2/TEST_3 kelimeleri henüz belirlenmediği için tanımlı değil.
+- Olası bir sıralama değişikliği (PMI_Farki ve Kelime tie-breaker)
+  01_PMI_Analizi.py'ye uygulanmadı; önceki yalnız PMI_Farki sırası korundu.
+- temiz_metin_lemma hâlen muhafaza edilir. Nihai sütun kaldırma kararı
+  verilmeden önceki onaylı hücre–token–POS doğrulama kuralı korunmuştur.
+- 01 veri kazıma kodu test kopyasında referanstır; henüz ayrı güvenli
+  yeniden kazıma sürümü yazılmadı.
+
+500 TÜRKÜ TESTİ (AYNI VAR OLAN ÖRNEKLEM)
+- 04: toplam 376 düzeltme, 286 şüpheli kullanımda otomatik dönüşüm yok.
+- TEST_1 POSLU: 165 erkek / 174 kadın kabul edilen seed, 121 sonuç,
+  94 sayısal PMI_Farki.
+- TEST_1 POSSUZ: 172 erkek / 314 kadın kabul edilen seed, 157 sonuç,
+  128 sayısal PMI_Farki.
+- POSLU 121 kelimenin tüm sayısal alanları, önceki 500-türkü raporuyla
+  1e-8 toleransında birebir eşleşti; fark yalnız yuvarlama düzeyinde.
+- Ortak renk / x / balon boyutu ölçeğinde iki PNG üretildi.
+
+27.620 TÜRKÜ ORTAK VERİ TESTİ
+- Güncellenen 02 kodu ham Excel + tarihsel sıra referansını okuyup
+  27.620 türküyle başarılı çalıştı; özgün metin ve sıra doğrulandı.
+
+AÇIK DOĞRULAMA KONULARI
+- 03 tam Stanza aşaması çalıştırılmadı: bu çalışma ortamında stanza
+  kütüphanesi bulunmuyor. Windows'ta yerel model ve sürümle test gerek.
+- 03'te sayıların Stanza ÖNCESİNDE silindiği tarihsel normalizasyon
+  korunmuştur; PUNCT/SYM/NUM token filtresi uygulanmaz. Bu ayrımın
+  metodolojik etkisi ayrıca incelenmeli; sessizce değiştirilmez.
+- Tam korpus 03/04/PMI ve genelleştirme eşitliği henüz test edilmedi.
+- 03 temizleme işlemleri nedeniyle eski PMI sonuçlarından yeni sonuçlar
+  değişebilir; olumlu/olumsuz diye peşinen değerlendirilmez.
+- Buradaki veri Excel çıktıları kullanıcı ana projesine kopyalanmadı.
+- Kodlar test amaçlıdır; tezde nihai bulgu kabul edilmeden önce
+  örnek ve tam-korpus doğrulaması tamamlanmalıdır.
+
+
+======================================================================
+27 EKİM 2026 — 03/04 METİN SÜTUNLARI: KULLANICI ONAYLI KARARLAR
+======================================================================
+
+KARAR VERİLDİ; HENÜZ KODA UYGULANMADI. Bu bölüm, yukarıdaki eski
+“temiz_metin_lemma hâlen muhafaza edilir” gibi geçmişteki geçici
+ifadelerin yerine GEÇER. Geçmiş test sonuçlarının yapıldığı sürüm
+bu kararlarla geriye dönük değiştirilmiş sayılmaz.
+
+1) SÜTUN İSMİ:
+- Önceki “Yalın Sözler” sütunu yeni sürümde
+  “Yalın Sözler (Temizlik Sonrası)” olarak adlandırılacak.
+- Bu sütun yalnızca parantez çıkarma işleminin sonucu değildir:
+  tanımlı kurallara göre parantez içi ifadeler, bibliyografik/kaynak
+  satırları ve ilgili metin temizliği uygulanmış hâlidir.
+- Bu sütun Stanza lemmatizasyonu SONUCU değildir; 03 aşamasında
+  temizlenmiş metni inceleme ve denetlemeye yarar.
+
+2) TOKEN–LEMMA–POS TEMSİLİ:
+- Tek sütunda tuple/demet listesi yerine üç AYRI liste sütunu
+  kullanılacak. Bu kullanıcı tarafından onaylandı.
+- Önerilen adlar: “Tokenler”, “Lemmalar”, “POS_Etiketleri”.
+- Aynı i indeksindeki Tokenler[i], Lemmalar[i] ve POS_Etiketleri[i]
+  AYNI tokena ait bilgileri temsil edecek; değerleri birbirine
+  eşit olmak zorunda değildir. İndeks hizası kodla denetlenecek.
+- “orijinal_kelimeler” adı yanıltıcı olduğundan “Tokenler” olacak:
+  bunlar kaynağın dokunulmamış sözcükleri değil, 03 temizliği ve
+  Stanza normalizasyonu sonrasında Stanza'nın ayırdığı birimlerdir.
+- Liste temsili 03, 04 ve PMI kodlarında birlikte uyarlanacak.
+  Veri yapısını değiştirmek için ayrıca tuple alanı üretilmeyecek.
+
+3) KALDIRILACAK SÜTUNLAR:
+- “feats_listesi” kaldırılacak. Mevcut çalışma FEATS bilgisine
+  analitik ihtiyaç duymuyor; 04'teki sadece liste uzunluğu
+  kontrolü, Tokenler/Lemmalar/POS_Etiketleri ile yapılabilecek.
+- Daha önce onaylanan “temiz_metin_lemma” sütununu kaldırma kararı
+  GEÇERLİDİR. Bu sütun lemma listesinin birleştirilmiş tekrarıdır.
+- Kaldırma işlemi 03, 04 ve PMI'nin girdi/çıktı alan adları
+  birlikte düzenlenip test edildiğinde uygulanacak. Eski Excel'ler
+  ve ana proje dosyaları silinmeyecek/değiştirilmeyecek.
+
+4) HEDEF ÇIKTI SÜTUNLARI (03 VE 04) — TOPLAM 8:
+  1. Link
+  2. Başlık
+  3. Yöre
+  4. Sözler
+  5. Yalın Sözler (Temizlik Sonrası)
+  6. Tokenler
+  7. Lemmalar
+  8. POS_Etiketleri
+
+5) KAPSAM VE SINIRLAR:
+- 01: Orijinal türkü kazıma kodu ve mevcut ham Excel değişmez;
+  yeniden tarama yapılmaz.
+- 02: Her iki araştırma için ortak veri üretir; 27.620 türkülük
+  doğrulanan sürüm korunur.
+- 03: PMI'ye özel metin temizliği + Stanza bilgileri üretir;
+  04 bu çıktıyı okur. 03/04'ün ortak veri kolundaki klasör
+  konumu ayrı bir veri işleme kararı değildir.
+- 04: Yalnızca güvenli lemma düzeltmesini uygular; hangi tokenın
+  düzeltildiği izlenebilir, Tokenler ve POS sırası bozulmaz.
+- PMI: Güncellenen sütun adlarını okuyacak; seed TEST_1/TEST_2/TEST_3
+  ve POS_KONTROLU=True/False bağımsız ayarlar olarak kalacak.
+- Genelleştirme analizi şimdilik değiştirilmez.
+- Her aşamada yalnız gerekli sütun/işlem/çıktı üretilir; kodlar
+  anlaşılır Türkçe açıklamalı ve açık girdi–çıktılı yazılır.
+- 03 sayı/normalizasyon kuralları, 04 mapping riskleri ve
+  tam korpusun uçtan uca doğrulanması henüz tamamlanmamıştır.
+
+UYGULAMA DURUMU: 27 EKİM 2026 İTİBARIYLA KARARLAR YAZILDI,
+ANCAK 03/04/PMI KODLARI BU KARARLARLA HENÜZ DEĞİŞTİRİLMEDİ,
+YENİ EXCEL OLUŞTURULMADI VE ANA PROJEYE DOKUNULMADI.
+
+==============================================================
+27 EKİM 2026 — KULLANICI TEYİDİ / TUPLE KULLANILMAYACAK
+==============================================================
+KESİN KARAR: Token, lemma ve POS bilgileri TEK tuple/demet listesinde
+tutulmayacak. ÜÇ AYRI SÜTUN VE ÜÇ AYRI LİSTE olarak kalacak:
+- Tokenler
+- Lemmalar
+- POS_Etiketleri
+
+Her üç listede aynı indeks aynı tokenı ifade eder:
+Tokenler[i], Lemmalar[i], POS_Etiketleri[i].
+Örneğin Tokenler[1]='kızlar', Lemmalar[1]='kız',
+POS_Etiketleri[1]='NOUN'. Kodda liste uzunlukları ve sırası
+kontrol edilecek. Tuple'a dönüştürme, tek sütuna birleştirme veya
+üçlü kayıt listesi oluşturma YAPILMAYACAK.
+
+DİĞER ONAYLI SÜTUN KARARLARI DEĞİŞMEDİ:
+- 'Yalın Sözler (Temizlik Sonrası)' sütun adı kullanılacak.
+- 'feats_listesi' kaldırılacak.
+- 'temiz_metin_lemma' kaldırılacak.
+- 03 ve 04 hedef çıktısı: 8 sütun.
+
+UYGULAMA DURUMU: Karar defterine kaydedildi; kodlar ve ana proje
+henüz bu değişikliğe göre düzenlenmedi.
+
+
+29 EKIM 2026 — SEKIZ SUTUN KARARININ TEST KODLARINA UYGULANMASI
+- 03 ve 04 Excel ciktilari tam olarak 8 sutundur:
+  Link, Başlık, Yöre, Sözler, Yalın Sözler (Temizlik Sonrası),
+  Tokenler, Lemmalar, POS_Etiketleri.
+- Tokenler/Lemmalar/POS_Etiketleri uc AYRI listede tutulur.
+  Birlesik tuple listesi Excel'e yazilmaz; ayni indeks ayni kelimeyi anlatir.
+- feats_listesi ve temiz_metin_lemma Excel sutunlari kaldirildi.
+  04 mapping ve PMI kodu 8 sutunlu yeni semayi okuyacak sekilde uyarlandi.
+- 01 ham veri cekme kodu, orijinal dosyayla birebir ayni kopyadir;
+  yeniden calistirilmadi. Ham arşiv yeniden olusturulmadi.
+- 02 ortak veri koduna ve PMI matematiksel kurallarina dokunulmadi.
+- guvenli_cikti.py isimli tarihi helper dosyasi DEGISTIRILMEDI.
+  Test kodlarinin kendi 'cikti zaten varsa hata ver' korumasi da DEGISTIRILMEDI.
+  Yeni bir dosya koruma mekanizmasi eklenmedi; kendi kendine _V1 uretmez.
+- Onceki 500 ornek Excel'i eski 10 sutunlu oldugu icin yeni PMI koduna
+  dogrudan verilmez. Eski komutlarin yanlis formati okumasini engellemek icin
+  TEST_CALISTIR.cmd icindeki PMI500/GRAFIK500 kisayollari kaldirildi.
+- Sayilari silme ve â/î/û donusumu ile 04 guvenli mapping ilkeleri
+  burada DEGISTIRILMEDI: bu yontem konulari sonraki ayri kontrolde ele alinacak.
+- 03 Stanza tam veri testi Windows ortaminda halen BEKLIYOR.
+- Genellestirme kodlari ve ana TEZ_ANA_PROJE_V2 DEGISTIRILMEDI.
+
+
+======================================================================
+29 EKİM 2026 — 03 METİN TEMİZLİĞİ KESİN KARARLAR / 04'E GEÇİŞ
+======================================================================
+DURUM: Aşağıdaki 03 kuralları KULLANICI TARAFINDAN ONAYLANDI.
+Bu kararlar, 29 Ekim 8 sütunlu test ZIP'indeki 03 koduna henüz
+uygulanmış sayılmaz. Ana proje ve Excel'ler değiştirilmedi. Kod
+çalıştırma/yeniden veri üretimi bu kayıtla yapılmadı.
+
+A. 03'ÜN AMACI VE DEĞİŞMEYEN AKIŞ
+- 01 ham veri çekme kodu ve mevcut turkudostlari_arsiv.xlsx aynen kalır,
+  yeniden tarama yapılmaz.
+- 02, hem PMI hem genelleştirme için ortak ve özgün veriyi üretir.
+- 03, PMI kolunda temizleme + Türkçe Stanza token/POS/lemma üretir;
+  04 güvenli mapping için 03'ün çıktısını okur.
+- 03/04 çıktısı tam 8 sütun: Link, Başlık, Yöre, Sözler,
+  Yalın Sözler (Temizlik Sonrası), Tokenler, Lemmalar, POS_Etiketleri.
+- Tokenler, Lemmalar ve POS_Etiketleri ÜÇ AYRI LİSTE olarak tutulur;
+  aynı indeks aynı tokena aittir. Tuple/demet yapılmaz.
+- feats_listesi ve temiz_metin_lemma üretilmez.
+- Metin temizliğinin özgün Sözler sütunu üzerinde geri dönük etkisi yoktur.
+
+B. KALACAK İŞLEMLER
+1. Parantez içindeki BÜTÜN metin, AÇAN VE KAPATAN PARANTEZLERİYLE
+   BİRLİKTE çıkarılır. Örnek: 'güzel (aman aman) kız' -> 'güzel kız'.
+   Yalnız parantez karakterlerini silip içeriği tutmak YAPILMAYACAK.
+2. Kaynak/bibliyografik açıklama satırları satır bazında ayıklanır;
+   bu işlem dize/satır sınırları boşluğa indirilmeden ÖNCE yapılır.
+   Yanlışlıkla gerçek türkünün silinmemesi için seçici örüntüler
+   kullanılır. Onaylı amaç: açıklama satırı gider, diğer dizeler kalır.
+   Örüntülerin kod düzeyindeki kesin ifadesi uygulama sırasında
+   gerçek örnekler gözden geçirilerek denetlenecek.
+3. HTML benzeri teknik etiketler, söz dışı 'Serbest:' ve 'Bağlantı:'
+   gibi başlık işaretleri ayıklanır; gerçek söz içeriği korunur.
+4. Gerekli boşluk düzenlemesi yapılır; önce satır bazlı kaynak
+   ayıklaması, sonra normalizasyon sırası korunur.
+5. Türkçeye uygun küçük harf (I->ı, İ->i), Unicode NFC korunur.
+6. Stanza tokenize,pos,lemma korunur. 03'te özel ad (PROPN) için
+   yüzey biçimini lemma olarak alma eski kuralı şimdilik korunur;
+   bu PMI'nin POS açık/kapalı anahtarıyla aynı şey DEĞİLDİR.
+7. Çok sözcüklü Stanza token/lemma uyuşmazlıklarında hizalama
+   korunur; belirsiz POS=X anlamı 'etiket bilinmiyor'dur.
+
+C. KALDIRILACAK KURALLAR
+1. Satır sonunda '-' ile bölünmüş kelimeleri otomatik birleştirme
+   kaldırılır; kanıtlanmamış bir dönüşüm yapılmaz.
+2. Metindeki sayıları/rakamları topluca silme kaldırılır.
+   Ayrıca isalpha(), 3 karakterden kısa lemma elemesi,
+   PUNCT/SYM/NUM otomatik dışlama filtreleri EKLENMEZ.
+3. â/î/û -> a/i/u dönüşümü kaldırılır; düzeltme işaretli harfler
+   korunur. Türkçe küçük harf ve Unicode işlemleri devam eder.
+4. 'sözü yoktur' herhangi bir yerde geçtiğinde bütün türküyü
+   boşaltma kontrolü kaldırılır; gerçek boş kayıt olağan şekilde
+   ele alınır.
+5. Aynı iş için gereksiz sütunlar, çift normalizasyon, kullanılmayan
+   değişkenler ve yardımcı çıktı dosyaları oluşturulmaz.
+
+D. 04 KODUNUN MEVCUT DURUMU (İNCELENDİ; HENÜZ YENİ KARAR DEĞİL)
+- 29 Ekim 8 sütunlu test paketindeki 04_LemmaDuzeltme.py erişilebilir.
+- 65 lemma grubunda, 491 benzersiz yüzey biçimi -> lemma eşlemesi var.
+- 04, 03'ün 8 sütununu okuyup Lemmalar alanını gerektiği kadar
+  değiştiriyor; Tokenler/POS_Etiketleri aynı sırada kalıyor.
+- Riskli kelimeler ve POS uyumsuzluklarında dönüşüm atlanıyor.
+- 04'ün POS'a dayalı mapping güvenliği, PMI'nin POS_KONTROLU=False
+  seçeneğiyle otomatik olarak kapanmıyor. Dolayısıyla mevcut deney
+  'ortak POS-duyarlı 04 sonrası PMI seed POS filtresi açık/kapalı'
+  karşılaştırmasıdır; uçtan uca sıfır POS kullanımı değildir.
+- 04 için henüz yeni nihai karar verilmedi; bu konu konuşulacak.
+- Test/ana projedeki guvenli_cikti.py korunması kararı değişmiyor;
+  yeni koruma tasarımı eklenmedi.
+
+SONRAKİ ADIM: 04'ün POS-güvenlik kuralının ve belirsiz kelimeler
+stratejisinin kullanıcıyla netleştirilmesi; bundan sonra kodların
+birlikte güncellenmesi ve tek uçtan uca doğrulama.
+
+======================================================================
+29 EKİM 2026 — 04 LEMMA DÜZELTMESİ VE PMI POS AYRIMI (ONAYLI)
+======================================================================
+DURUM: Kullanıcının 04/PMI yöntem kararları kesinleşti; mevcut kodlara
+uygulama ve tam-korpus yeniden hesaplama henüz yapılmadı.
+
+1. Girdi/çıktı yöntemi: Analiz hattı Excel (.xlsx) okur ve Excel (.xlsx)
+   üretir. Ana veri hattında CSV üretilmeyecek. İsteğe bağlı test veya
+   tanılama raporu ileride gerekirse, ana işlevden ayrı, kodun sonunda
+   açıkça 'TEST İÇİN RAPOR' başlığı altında yer alabilir; varsayılan
+   çalışmada ek rapor dosyası üretilmeyecek. Kısa konsol durum bilgisi
+   ayrı bir dosya üretmek sayılmaz.
+
+2. 04'ün amacı Stanza'nın bütün hatalarını düzeltmek DEĞİLDİR.
+   Riskli/belirsiz kelimelerde zorla dönüştürme yapılmaz. Stanza'nın
+   yanlışlıkla VERB verdiği 'gelin' örneğinde yanlış düzeltme yerine
+   kimi doğru isim kullanımlarının kaçması kabul edilen yöntem sınırıdır.
+   Tokenler ve POS_Etiketleri aynı kalır, yalnız gerekli Lemmalar
+   düzeltilebilir. 8 sütunlu Excel yapısı korunur.
+
+3. 04'ün lemma mapping POS güvenliği ve 05/PMI'nin seed POS kabul
+   kontrolü İKİ AYRI, ANLAŞILIR İSİMLİ değişkenle gösterilecek:
+      04: POS_LEMMA_GUVENLIK_KONTROLU = True
+      PMI: POS_SEED_KABUL_KONTROLU = True / False
+   (İsimler önerilen Python değişken adlarıdır; kod yazılırken aynı
+   anlam korunacak. Mevcut sürümlerde henüz bu yeni adlandırma yoktur.)
+
+4. Her iki PMI deneyi AYNI 04 çıktısını kullanır. 04'teki
+   POS_LEMMA_GUVENLIK_KONTROLU = True her iki deneyde de SABİT kalır.
+   Yalnız PMI'deki POS_SEED_KABUL_KONTROLU değiştirilir.
+   Böylece iki PMI sonucunun farkı yalnız seed kabul filtresine
+   atfedilebilir; veri hazırlama ve lemma düzeltmesi aynıdır.
+
+5. POS'lu/POS'suz ifadesi 'Stanza ve bütün ön işleme boyunca POS açık/
+   kapalı' demek DEĞİLDİR. Doğru bilimsel tanım:
+   'Ortak POS-duyarlı lemma düzeltme çıktılarına dayanan, PMI seed
+   uygunluğunda POS filtresi açık/kapalı karşılaştırması.'
+   Bu düzenlemede Stanza POS hatalarının veya ihtiyatlı lemma
+   düzeltme yüzünden kaçan gerçek seed kullanımlarının etkisi
+   sıfırlanmış değildir; bu yöntem sınırlılığıdır.
+
+6. 04 POS güvenliği de açılıp kapatılsaydı, olası yanlış lemma
+   dönüşümlerinin artması ve PMI karşılaştırmasında iki unsurun
+   birlikte değişmesi riski doğardı. Kullanıcı bunu tercih etmiyor.
+   Ayrı bir araştırma tasarlanmadıkça 04 güvenlik ayarı değiştirilmez.
+
+7. Sözlük ve diğer yöntem kararları: 65 gruptaki 491 yüzey biçimli
+   mapping temel kaynak olarak korunur; belirsiz sözcükler zorla
+   düzeltilmez; ikinci bir map.txt akışı eklenmez. 03'ün onaylı
+   temizleme kararları; 8 sütun, üç ayrı Tokenler/Lemmalar/POS_Etiketleri
+   listesi; Excel koruma yaklaşımı ve ana proje güvenliği değişmedi.
+
+SONRAKİ ADIM: 05 PMI ve 06 grafik kodlarının nihai yöntem/çıktı
+kurallarını kararlaştırmak, ardından bir kez uçtan uca test için
+onaylı kodları birlikte güncellemek. Bu kayıt herhangi bir kodun
+çalıştırıldığı veya Excel'in değiştirildiği anlamına gelmez.
+
+
+======================================================================
+29 EKİM 2026 — PMI SON YÖNTEM, NLTK VE TEK-TARAFLI İLİŞKİ KARARLARI
+======================================================================
+DURUM: Kullanıcının bu konuşmada açıkça onayladığı kararlar; henüz
+Python kodlarına veya gerçek korpus Excel'lerine UYGULANMADI.
+Bu bölüm, defterdeki eski ve artık geçerli olmayan PMI kurallarının
+(örn. türkü başına toplam ağırlık 1, 3 ham eşleşme, stopword listesi,
+temiz_metin_lemma girdisi) yerine GEÇER. Eski kayıtlar tarihçe olarak
+silinmedi. Yeni hesaplama eski PMI sonuçlarını değiştirecektir.
+
+A) GİRDİ VE SEED DENEYLERİ
+- PMI girdisi: 04'ün 8 sütunlu `temiz_veri_lemmatize_FINAL.xlsx`
+  çıktısındaki sıralı `Lemmalar` ve `POS_Etiketleri` listeleri;
+  şarkı/türkü kimliği satır/Link üzerinden korunur. Liste hizası zorunlu.
+- Seçilebilir kadın ve erkek seed kümeleri AYRI `seed_listeleri.py`
+  dosyasında tutulur; her deney benzersiz TEST_1, TEST_2 vb. adlarla
+  tanımlanır. Kullanıcı yeni deneyler için farklı kadın ve erkek seed
+  listeleri belirleyebilir; mevcut asıl liste sessizce değiştirilmez.
+- `POS_LEMMA_GUVENLIK_KONTROLU = True` 04'te her deney için ortaktır.
+  `POS_SEED_KABUL_KONTROLU = True/False` sadece PMI'nin seed kabulünde
+  farklılaşır. POS'lu deneyde kabul edilen seed türleri NOUN ve ADJ;
+  POS'suz deneyde seed POS koşulu uygulanmaz.
+- Kullanılan tüm seed sözcükleri (hangi cinsiyet listesinden olursa
+  olsun) bağlam ADAYI olarak sayılmaz. Aynı bağlam sözcüğünün ayrı
+  kadın ve erkek seed pencerelerinde bulunması iki grupta BAĞIMSIZ
+  sayılır; kadın/erkek grup önceliği yoktur.
+- Aynı sözcük iki seed listesine de konulursa hiçbirine otomatik
+  öncelik verilmez, her iki liste üyeliği dikkate alınır ve ortak
+  sözcük deney bilgisinde bildirilir (güvenli tanı / şeffaflık).
+
+B) PMI PENCERE, TEMİZLİK VE EŞİKLER
+- Her seedin sol ve sağındaki en fazla 5 token ±5 pencere oluşturur.
+  Noktalama işaretleri (PUNCT) PMI aşamasında PENCERE KURULMADAN
+  ÖNCE token dizisinden çıkarılır; `yar , gelin` örneğinde mesafe 1 olur.
+  Bu, 03'ün Excel'indeki token/lemma/POS dizilerini değiştirmez.
+  Sırf sayı diye token elenmez; 03'teki `isalpha()` filtresi YOKTUR.
+- Özel stopword listesi TAMAMEN kaldırılır; 'aman', 'oy', 'can' vb.
+  bağlam adayları ayrıca dışlanmaz. 03'te parantez içi metin
+  parantezleriyle birlikte temizlenmeye devam eder.
+- Bir bağlam sözcüğü genel külliyatta en az 15 FARKLI türküde
+  görülmüş olmalıdır (MIN_TURKU_FREQUENCY=15).
+- Geçerli bağlam sözcüğünün kadın VEYA erkek seed grubuyla en az
+  15 FARKLI türküde ±5 içinde eşleşmesi gerekir; eski 3 ham
+  birlikte görülme sınırı kullanılmaz.
+
+C) TÜRKÜ BAZLI TEKİLLEŞTİRME — KULLANICININ SEÇTİĞİ B YÖNTEMİ
+- Her türküde her farklı (seed GRUBU, bağlam sözcüğü) ilişkisi,
+  ister 1 ister 100 kez görülmüş olsun EN FAZLA 1 sayılır.
+- Aynı türküde 'kadın grubu–dert' ve 'kadın grubu–sevda' 1'er;
+  'erkek grubu–dert' ise ayrıca 1 sayılabilir. Kadın grubunun
+  birden çok seedinin 'dert' ile eşleşmesi kadın–dert'i büyütmez.
+- Eski 'türküdeki bütün eşleşmelere toplam ağırlık 1 dağıt'
+  yöntemi KULLANILMAYACAK. Yeni sayılar ağırlıklı ondalık değil,
+  türkü-özel grup–kelime ilişkisinin farklı türkü sayılarıdır.
+- NLTK `BigramAssocMeasures.pmi` hesaplamayı yapacak; tekilleştirme,
+  filtreler, pencere ve 2×kelime matrisi bize özel, test edilebilir
+  sayım koduyla hazırlanacaktır. NLTK'nin hazır bigram bulucusu
+  bu özel kuralı kendiliğinden karşılamaz.
+
+D) PMI MATEMATİĞİ VE SIFIR DURUMLARI
+- w kelimesi için C_K(w), C_E(w): kadın/erkek grubunda ilişki
+  görülen FARKLI türkü sayısı. C(w)=C_K(w)+C_E(w).
+  T_K=sum_w C_K(w), T_E=sum_w C_E(w); N=T_K+T_E.
+  İlişkiler 2 × kelime olay matrisi olarak yorumlanır; N toplam
+  türkü sayısı DEĞİLDİR.
+- Yumuşatılmamış PMI:
+  PMI_K(w)=log2(C_K(w)*N/(T_K*C(w)))
+  PMI_E(w)=log2(C_E(w)*N/(T_E*C(w)))
+  PMI_Farki=PMI_K-PMI_E.
+- TEK TARAFLI kelimeler (örn. kadın 20 türkü, erkek 0 türkü)
+  kaybolmayacak ve matematiksel olarak hesaplanabilir fark verecek:
+  kullanıcı α=0,5 yumuşatma (smoothing) önerisini onayladı.
+  GERÇEK sayımlar Excel'de 20 ve 0 olarak korunur, 0,5 gerçek
+  gözlem diye gösterilmez.
+- Tutarlı 2×V matrisinde HER hücreye aynı α=0,5 eklenir:
+  C'_K=C_K+α; C'_E=C_E+α; C'(w)=C_K+C_E+2α;
+  T'_K=T_K+Vα; T'_E=T_E+Vα; N'=N+2Vα.
+  PMI_K=log2(C'_K*N'/(T'_K*C'(w)));
+  PMI_E=log2(C'_E*N'/(T'_E*C'(w))).
+  PMI_Farki=PMI_K-PMI_E; iki hesap NLTK'ye tutarlı girdilerle
+  verilecek; denetim için bağımsız formülle eşitlik test edilecek.
+- `PMI_Farki = 0` NÖTR ilişki; 'bir grupta ham sayı 0' ise
+  yumuşatma sayesinde artık `NaN` olmak zorunda değildir.
+- V'nin (smoothing uygulanan bağlam kelime evreni) kesin kapsamı,
+  temel marjinal toplamların hangi filtre aşamasından sonra sabit
+  tutulacağı ve ayrı POS'lu/POS'suz deneyin evreni KODLANMADAN
+  ÖNCE açıkça netleştirilip kontrol edilecek.
+
+E) SONUÇ EXCEL, GRAFİK VE DOĞRULAMA
+- POS açık/kapalı ve TEST_1/TEST_2 ... sonuçları ayrı isimli
+  Excel/PNG dosyalarında saklanır; bir mod diğerini ezmez.
+- Amaçlanan sonuç Excel sütunları:
+  `Kelime`, `Genel_Turku_Frekansi`,
+  `Kadin_Birlikte_Turku_Sayisi`, `Erkek_Birlikte_Turku_Sayisi`,
+  `Toplam_Grup_Kelime_Eslesmesi`, `PMI_Kadin`, `PMI_Erkek`,
+  `PMI_Farki`. Eski `Context_Slot` / `Genel_Context_Frekansi`
+  ondalıklı ağırlık sütunları bu yeni yönteme taşınmaz.
+  `Yorum` sütunu ve yinelenen terminal çıktıları kaldırılır.
+- Deney bilgileri (seed sözcükleri, deney kodu, iki POS anahtarı,
+  pencere, eşikler, yumuşatma α, V, T_K, T_E, N) ikinci bir Excel
+  sayfasında kayıtlı tutulabilir; harici rapor üretmek zorunlu değil.
+- Bubble yalnız hesaplanabilir, sıfırdan farklı PMI farklarına
+  dayanır; kadın için en yüksek 50 pozitif, erkek için en negatif
+  50 kelime; yinelenen kelime yok, iki POS modu karşılaştırılabilir
+  eksen/ölçek kullanır. Baloncuk büyüklüğü yeni yönteme uygun
+  tekil birlikte-türkü sıklığıyla tanımlanmalı.
+- Doğrulama: aynı türkünün 100 tekrar testi; birden çok seed
+  birleşimi; iki bağımsız grup; ±5 pencere ve noktalama; 14/15
+  farklı türkü eşiği; NLTK ↔ bağımsız PMI formül eşitliği;
+  α=0,5 sıfır-sayım testi; Excel sütun ve mod ayrımı.
+- Kod/Excel değişikliği yapılmadı; ilk gerçek tam-veri sonuçları
+  elde edilmeden doğrulandı denmeyecek.
+
+F) KODLAMADAN ÖNCE NETLEŞTİRİLMESİ GEREKEN KÜÇÜK NOKTALAR
+1. BAĞLAMIN ANA BİRİMİ: yalnız `lemma` mı, yoksa `(lemma, POS)`
+   ikilisi mi? Kullanıcı farklı POS'lu kullanımların ayrı
+   sayılabileceğini gündeme getirdi; fakat seedlerin her POS'ta
+   bağlamdan dışlanması kararıyla bu tartışma tamamlanmış sayılmaz.
+   Ana POS'lu/POS'suz karşılaştırmada yalnız seed kabul filtresi
+   değişsin isteniyorsa bağlamı SADECE LEMMA tutmak daha sade ve
+   önceki deney tanımıyla tutarlıdır. Bu kullanıcıya önerilecek.
+2. YUMUŞATMANIN V SÖZCÜK EVRENİ ve marjinal sayımların kapsamı:
+   15 genel-türkü frekansından geçen TÜM bağlam adayları önce sabit
+   evrene alınabilir; 15 birlikte-türkü eşiği yalnız sonuç satırı
+   filtresi olabilir. Bu matematiksel tercih hem NLTK kontrolünde
+   hem deney bilgi sayfasında sabit olmalıdır.
+3. Ortak seed sözcükleri gelecekteki TEST_n deneylerinde olursa
+   iki gruba da sayma kararı kabul edildi. Bunun raporlanması
+   deney sayfasında yapılacak; şu anki deneyde yeni ortak seed
+   yaratılmayacak.
+
+UYGULAMA DURUMU: Şimdilik KOD ÇALIŞTIRILMADI / EXCEL YENİLENMEDİ.
+
+
+======================================================================
+29 EKİM 2026 — SON ONAY: İKİ BAĞIMSIZ PMI ANAHTARI VE KOD OKUNABİLİRLİĞİ
+======================================================================
+DURUM: BU BÖLÜM PMI İÇİN EN GÜNCEL ONAYLI KARARLARDIR.
+Bu defterin üst bölümlerindeki eski yöntemler tarihçe amacıyla tutuldu;
+çelişki varsa EN SON ONAYLI KARAR GEÇERLİDİR.
+
+1. ÜÇ AYRI POS KONTROLÜ, ÜÇ AYRI GÖREV
+   04: POS_LEMMA_GUVENLIK_KONTROLU = True
+       Mapping güvenliği içindir; her PMI deneyinde SABİT açık.
+   PMI: SEED_POS_KONTROLU = True / False
+       True: seed tokenının Stanza POS'u NOUN veya ADJ olmalı.
+       False: seed kabulünde POS filtresi uygulanmaz.
+   PMI: BAGLAM_POS_AYRIMI = True / False
+       True: bağlam birimi (lemma, POS) olur; örn. gül/NOUN ve
+             gül/VERB farklı satırlarda ve farklı sayımlarda değerlendirilir.
+       False: bağlam birimi yalnızca lemma olur; örn. gül tek satır.
+   Bu iki PMI anahtarı birbirinden BAĞIMSIZDIR: dört kombinasyon vardır.
+   'POS'lu/POS'suz' yerine 'Seed POS filtresi açık/kapalı' ve
+   'Bağlam POS ayrımı açık/kapalı' ifadeleri kullanılır.
+
+2. SAYIM BİRİMİ KORUNUR
+   Bir türküde her (kadın/erkek seed grubu, bağlam birimi) ilişkisi
+   yalnızca BİR KEZ sayılır; 100 kez tekrar, tek türkü katkısını
+   büyütmez. Bağlam POS ayrımı açıksa aynı türkünün gül/NOUN ve
+   gül/VERB ilişkileri ayrı ayrı 1 olabilir. Kapalıysa gül toplam 1.
+   Aynı bağlam birimi kadın ve erkek grubuyla eşleşebilir; iki grup
+   ayrı ayrı 1 katkı alır. Grup önceliği YOK.
+   Kadın/erkek seed listelerindeki bütün seed lemmaları, hangi POS
+   etiketini taşırsa taşısın, bağlam adayı değildir.
+
+3. PENCERE VE FİLTRELER
+   ±5 token; PMI aşamasında PUNCT tokenları pencere kurulmadan önce
+   çıkarılır ve uzaklık yeniden hesaplanır. Sayılar sırf sayı
+   oldukları için elenmez. Özel stopword listesi kullanılmaz.
+   En az 15 farklı türküde genel görülme, 15 farklı türküde kadın
+   VEYA erkek grubuyla ±5 bağlam ilişkisi sonucu seçme eşikleridir.
+   POS ayrımı açıksa genel frekans ve birliktelik eşikleri
+   (lemma, POS) düzeyinde; kapalıysa lemma düzeyinde ölçülür.
+
+4. PMI FORMÜLASYONU VE SINIRLI EVREN
+   Smoothing alpha = 0.5; hesaplama evreni genel en az 15 farklı
+   türküde geçen TÜM geçerli bağlam birimleridir. 15 birliktelik
+   eşiği yalnız SONUÇ SATIRI seçiminde kullanılır; evreni/marjinalleri
+   yeniden daraltmaz. Seed deneyinin ve anahtar kombinasyonunun
+   evreni, toplamları, V'si ayrı hesaplanır ve deney sayfasına kaydedilir.
+   C_K(w), C_E(w): kadın/erkek grubuyla bağlam ilişkisi görülen
+   farklı türkü sayıları. T_K=sum C_K; T_E=sum C_E; N=T_K+T_E;
+   V=geçerli bağlam birimi sayısı. Smoothing:
+      C_K' = C_K + alpha; C_E' = C_E + alpha;
+      C_w' = C_K + C_E + 2*alpha;
+      T_K' = T_K + V*alpha; T_E' = T_E + V*alpha;
+      N'   = N + 2*V*alpha.
+   PMI_K=log2(C_K'*N'/(T_K'*C_w'));
+   PMI_E=log2(C_E'*N'/(T_E'*C_w'));
+   PMI_Farki=PMI_K-PMI_E.
+   Tek taraflı (20,0) ilişkiler yumuşatma sayesinde sayısal fark
+   üretebilir; ham sayım (20,0) değişmez. Fark=0 nötrdür.
+   NLTK BigramAssocMeasures.pmi, bizim türkü bazlı sayımlardan
+   oluşturulan frekanslarla kullanılacak. NLTK ile bağımsız formül
+   karşılaştırılacak; özel sayım NLTK tarafından otomatik yapılmaz.
+
+5. SEED DENEYİ VE ÇIKTILAR
+   seed_listeleri.py içinde kadın/erkek grupları ve TEST_1, TEST_2...
+   tanımları bulunur; TEST_1 orijinal kullanılan listeden sessizce
+   değiştirilmez. Ayrı deneyler ve dört PMI anahtar kombinasyonu
+   birbirini ezmeyen dosya adlarıyla çalışır.
+   Her kombinasyon bir PMI sonuç .xlsx ve bir bubble .png üretir;
+   CSV yoktur. Sonuç Excel'inde Kelime ve POS (ayrım kapalıysa boş),
+   Genel_Turku_Frekansi, Kadin_Birlikte_Turku_Sayisi,
+   Erkek_Birlikte_Turku_Sayisi, Toplam_Grup_Kelime_Eslesmesi,
+   PMI_Kadin, PMI_Erkek, PMI_Farki bulunur.
+   Excel'in 'Deney_Bilgisi' sayfası: iki anahtar, seçilen seedler,
+   pencere=5, 15/15 eşikler, alpha, V, T_K, T_E, N ve sürüm bilgisi.
+   Bubble grafikte karşılaştırılabilir x/radius/renk ölçekleri,
+   en yüksek 50 pozitif + en düşük 50 negatif PMI farkı;
+   hesaplanamayan ve fark=0 olan kelimeler gösterilmez.
+
+6. KODLAMA KALİTESİ VE GÜVENLİK (KULLANICI SON TALEBİ)
+   - Python kodları lisans seviyesinde anlaşılır, sade, Türkçe kısa
+     açıklamalı; açık girdi, işlem, çıktı bölümlü yazılacak.
+   - 01'den sona kadar ilgili görevi anlatan numaralı dosya adları
+     kullanılacak; tarihsel 01 tarama kodu değiştirilmeyecek.
+   - Gereksiz kolon, CSV, rapor, ek ara dosya ve kopya kod olmayacak.
+   - Ana verinin girdi/çıktısı .xlsx; PMI için ayrıca gerekli .png.
+   - Gerekirse rapor kod sonunda 'TEST İÇİN RAPOR' olarak ayrı,
+     isteğe bağlı yer alır; varsayılan rapor üretimi yok.
+   - Kodu yazma ve tek uçtan uca kontrol henüz yapılmamıştır.
+   - Eski guvenli_cikti.py korunur; ana proje dosyaları ve
+     geçmiş çıktılar kullanıcı istemeden üzerine yazılmaz.
+   - Kullanıcıya ayrı ayrı çok sayıda terminal testi yaptırılmaz;
+     tek komutla bütünleşik, fail-fast doğrulama tercih edilir.
+
+SON DURUM: KARAR VERİLDİ. HENÜZ YENİ PMI KODU YAZILMADI VE
+KARARLAR TAM DERLEMDE DOĞRULANMADI. ÜÇ ANAHTARIN UYGULANMASI,
+NLTK'YE VERİLEN SAYIMLAR VE SIFIR-DURUM HESABI TEST EDİLECEK.
+
+
+======================================================================
+29 EKİM 2026 — SON DÜZELTME: HEDEF SEED VE BAĞLAM POS'UN AYRI İŞİ
+======================================================================
+DURUM: BU BÖLÜM ÖNCEKİ ÇELİŞKİLİ SEED POS AÇIKLAMALARININ YERİNE GEÇER.
+
+1. İKİ AYRI PMI ANAHTARINI KARIŞTIRMA
+   SEED_POS_KONTROLU = True / False
+   - SEED = HEDEF kelimedir (ör. gelin); ±5 penceresi hedefin etrafında
+     kurulur. True iken hedefin POS etiketi hedef kelime için önceden
+     tanımlanmış izinli POS'lardan biri olmalıdır.
+   - Örnek: gelin/NOUN hedef kabul, gelin/VERB kabul değil;
+     gelin/ADJ de otomatik kabul edilmez. Her seedin izinleri kullanıcı
+     tarafından açıkça tanımlanır; sessizce bütün seedlere aynı
+     {NOUN,ADJ} kuralı uygulanmaz. False iken hedefte POS filtresi yok.
+
+   BAGLAM_POS_AYRIMI = True / False
+   - BAĞLAM = hedef seedin ±5 token çevresinde bulunan ilişkili kelime
+     (ör. hedef gelin; bağlam gül). Bu anahtar hedef kabulünü değiştirmez.
+   - True iken aynı bağlam lemmasının farklı POS kullanımları AYRI
+     analiz birimleridir: (gül, NOUN), (gül, ADV), vb.
+   - False iken POS'a bakılmaz: bunların hepsi tek 'gül' birimi olur.
+   - POS ayrımı açıkken Excel'de her (Kelime, POS) ayrı satırdır;
+     Bubble grafikte 'gül_NOUN', 'gül_ADV' gibi etiket gösterilir.
+     Kapalıyken 'gül' etiketi gösterilir.
+   - Stanza etiketleri veri niteliğindedir; örnek olarak kullanılan
+     gül/ADV gerçekten doğru POS olduğu iddiası değildir.
+
+2. TÜRKÜ BAZLI TEKİLLEŞTİRME HER MODDA KORUNUR
+   - Bağlam POS ayrımı AÇIK: aynı türkünün aynı seed grubu
+     ile gül/NOUN eşleşmesi en fazla 1, gül/ADV en fazla 1.
+   - Ayrım KAPALI: aynı türkünün kadın-gül eşleşmesi (POS'tan bağımsız)
+     en fazla 1. 20 ve 30 gibi sayılar gerçek ham tekrar miktarı
+     değil; her POS türünün eşleştiği FARKLI TÜRKÜ sayısı olmalıdır.
+   - Kadın/erkek gruplarına öncelik yok; aynı bağlam iki grupta da
+     sayılabilir. Tüm seed kelimeleri bağlamdan çıkarılmaya devam eder.
+   - ±5 pencere, noktalama temizliği, genel 15 türkü ve ilişki 15
+     farklı türkü eşikleri, NLTK PMI ve alpha=0.5 kuralı değişmez.
+
+3. DENEY VE DOSYA İSİMLERİ
+   - Başlangıç seed listesinin klasörü SEED_1, yeni kullanıcı-tanımlı
+     seed listesi SEED_2, SEED_3... olur. TEST_1/SEED_TEMEL gibi
+     belirsiz veya konulu otomatik klasör isimleri kullanılmaz.
+   - Her SEED_n klasöründe iki PMI anahtarının dört kombinasyonu ayrı
+     Excel ve ayrı PNG üretir. İsimlerde alt çizgiler kullanılır:
+       PMI_SEED_POS_ACIK_BAGLAM_POS_AYRI.xlsx
+       Bubble_SEED_POS_ACIK_BAGLAM_POS_AYRI.png
+     ve öteki ACIK/KAPALI × AYRI/BIRLESIK kombinasyonları.
+   - 04 POS_LEMMA_GUVENLIK_KONTROLU=True olarak tüm modlarda sabittir.
+
+4. UYGULAMA DURUMU
+   Bu kayıt mimariyi açıklar. Yeni kod ve tam veri analizi henüz
+   uygulanmış/doğrulanmış değildir. Kullanıcının ana dosyalarına
+   bu güncelleme sırasında dokunulmadı.
+
+
+======================================================================
+29 EKİM 2026 — SON ONAY: POS KONTROLLERİNİN AÇIK İŞ BÖLÜMÜ
+======================================================================
+DURUM: BU BÖLÜM, ÖNCEKİ 'HER SEED İÇİN AYRI İZİNLİ POS LİSTESİ'
+KARARINI GÜNCELLER. YENİ VE GEÇERLİ KURAL TÜM HEDEF SEEDLER
+İÇİN ORTAK NOUN / ADJ KONTROLÜDÜR.
+
+03 — STANZA
+- Token, lemma ve POS etiketini üretir; aç-kapa deneysel filtre değildir.
+- Tokenler, Lemmalar, POS_Etiketleri sütunları hizalı kalır.
+
+04 — LEMMA DÜZELTME
+- POS_LEMMA_GUVENLIK_KONTROLU = True (tüm deneylerde sabit).
+- Bu kural mapping sırasında riskli yanlış dönüşümleri engeller.
+- Seed/bağlam seçiminden bağımsızdır.
+
+05 — PMI / BİRİNCİ DENEYSEL ANAHTAR
+SEED_POS_KONTROLU = True / False
+# Hedef (seed) kelimenin POS etiketi isim (NOUN) veya sıfat (ADJ) mı?
+# True: yalnız NOUN/ADJ etiketli seed kullanımları kabul edilir;
+#       VERB, ADV vb. seed olarak kabul edilmez.
+# False: seed kelimesi eşleştiğinde POS filtresi uygulanmaz.
+- Kontrol hedefe (kadın/erkek seed sözcüğüne) uygulanır, bağlam
+  kelimelerinin sözcük türlerini sınırlandırmaz.
+- Örnek: 'gelin' hedef ise gelin/NOUN ve gelin/ADJ kabul,
+  gelin/VERB ret (POS açıkken). Stanza POS hataları olasıdır.
+- Bu genel kural önceki kelimeye özel {gelin: NOUN} örnek
+  izin listesi teklifinin yerini alır; ayrıca sessiz per-seed
+  istisnalar eklenmez.
+
+05 — PMI / İKİNCİ DENEYSEL ANAHTAR
+BAGLAM_POS_AYRIMI = True / False
+# Seed çevresindeki bağlam kelimesinin farklı POS türleri
+# ayrı birer sonuç/bağlam birimi sayılsın mı?
+# True: gül_NOUN ve gül_VERB ayrı satır ve ayrı balondur.
+# False: aynı lemma 'gül' olarak birleşir; aynı türküde aynı grup
+#        ve lemma bir kez sayılır.
+- Bu anahtar seed kabulünü değiştirmez ve bağlamdaki fiil/zarf
+  gibi sözcükleri otomatik dışlamaz.
+- Seed listesinde yer alan lemmaların bağlamdan dışlanması kararı
+  devam eder. PUNCT önce çıkarılır; ±5 pencere sonra kurulur.
+
+DENEYLER
+- SEED_1, SEED_2 ... farklı kadın/erkek seed listesi seçimleridir.
+- Her SEED_n için yukarıdaki iki bağımsız anahtarın 4 birleşimi
+  ayrı sonuç Excel'i ve ayrı Bubble PNG üretir. Alt çizgili
+  açıklayıcı adlar kullanılacak.
+- Her sonuç Excel'inde Deney_Bilgisi sayfasında iki anahtarın
+  değerleri, gerçek seed listeleri ve sayım ayarları bulunur.
+- Ana matematik: türkü başına grup+bağlam birimine en fazla 1,
+  genel >=15 türkü, birlikte >=15 farklı türkü, NLTK PMI,
+  alpha=0.5 yumuşatma; kararlar değişmedi.
+- Bu belge karar kaydıdır; kod güncellemesi ve tam veri testleri
+  henüz yapılmamıştır.

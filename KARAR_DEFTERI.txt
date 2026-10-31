@@ -1,0 +1,73 @@
+TEZ V2 — KESİN KARAR DEFTERİ
+29 Ekim 2026 | UYGULAMA SÜRÜMÜ
+
+01. VERİ KAZIMA
+  - 01_TurkuDostlariCekme.py kodu, özgün dosyanın birebir kopyasıdır.
+  - 27.620 türkülük turkudostlari_arsiv.xlsx korunur; scraper çalıştırılmaz.
+
+02. ORTAK EXCEL
+  - turkudostlari_arsiv.xlsx → turkuler_ortak_veri.xlsx.
+  - Özgün Sözler, Başlık, Yöre, Link ve tarihsel kayıt sırası korunur.
+  - Genelleştirme analizi mevcut haliyle ayrı kalır; kodlarına dokunulmaz.
+
+03. METİN TEMİZLEME VE STANZA
+  - Kaynak/bibliyografik satırlar metin birleştirilmeden önce satır bazında çıkarılır.
+  - Parantezler ve içlerindeki bütün ifadeler birlikte çıkarılır.
+  - HTML ve metin dışı başlık/etiketler temizlenir.
+  - Satır sonu tire ile birleştirme YOK; rakamları silme YOK.
+  - â/î/û karakterlerini düzleştirme YOK; sözü yoktur denetimi YOK.
+  - isalpha/kısa kelime/otomatik POS filtreleri YOK.
+  - Türkçe küçük harf, NFC, Stanza tokenize/pos/lemma vardır.
+  - 8 sütun: Link, Başlık, Yöre, Sözler, Yalın Sözler (Temizlik Sonrası),
+    Tokenler, Lemmalar, POS_Etiketleri. Son üçü AYRI, hizalı listelerdir.
+
+04. GÜVENLİ LEMMA DÜZELTME
+  - Eski mapping sözlüğü (65 grup/491 aday eşleme) ve risk listesi korunur.
+  - POS_LEMMA_GUVENLIK_KONTROLU=True; riskli dönüşümler zorlanmaz.
+  - 8 sütun korunur; yalnız Lemmalar düzeltilebilir.
+
+05. TÜRKÜ BAZLI PMI
+  - Girdi 04'ün nihai 8 sütunlu Excel'i + seed_listeleri.py.
+  - Seed listeleri SEED_1, SEED_2... isimlendirilir. SEED_1 tarihi listeden gelir.
+  - SEED_POS_KONTROLU: Açıkken yalnız NOUN/ADJ etiketli HEDEF seed kabul;
+    kapalıyken seed için POS filtresi yok.
+  - BAGLAM_POS_AYRIMI: Açıkken gül_NOUN ve gül_VERB farklı bağlam;
+    kapalıyken ikisi sadece gül. Bağlamda genel NOUN/ADJ filtresi yok.
+  - İki PMI anahtarı bağımsızdır; dört mod ayrı Excel oluşturur.
+  - PUNCT ve noktalama tokenları ±5 pencereden ÖNCE çıkarılır; rakamlar korunur.
+  - Seed listelerinde bulunan lemmalar bağlam adayı olamaz.
+  - Özel stopword listesi TAMAMEN kaldırılmıştır.
+  - Her türküde (kadın/erkek grubu, bağlam birimi) en fazla 1 kez sayılır.
+    Aynı türküde iki ayrı bağlam birimi ayrı ayrı katkı yapabilir.
+    Aynı bağlam hem kadın hem erkek grubuyla eşleşebilir; öncelik YOK.
+  - Genel frekans en az 15 FARKLI türkü; sonuç göstermek için kadın VEYA
+    erkek tarafında en az 15 FARKLI türküde eşleşme gerekir.
+  - Genel frekans eşiğini aşan TÜM bağlam birimleri NLTK hesap evrenindedir.
+    Son birlikte görülme eşiği yalnız sonuçları seçer.
+  - PMI formülü NLTK BigramAssocMeasures.pmi.
+  - 2 x V tabloda her grup/bağlam hücresine alfa=0,5 eklenir;
+    buna bağlı grup ve genel toplamlar da düzeltilir.
+  - PMI_Kadin, PMI_Erkek ve PMI_Farki hesaplanır.
+    Gerçek 0 gözlem Excel'de 0 görünür; yumuşatma sadece hesapta kullanılır.
+  - Çıktı sütunları: Kelime, POS, Genel_Turku_Frekansi,
+    Kadin_Birlikte_Turku_Sayisi, Erkek_Birlikte_Turku_Sayisi,
+    Toplam_Grup_Kelime_Eslesmesi, PMI_Kadin, PMI_Erkek, PMI_Farki.
+  - İkinci sayfa Deney_Bilgisi; her SEED_n / POS modu ayrı .xlsx.
+
+06. BUBBLE
+  - Her seed deneyi için dört karşılaştırılabilir .png.
+  - En yüksek 50 pozitif + en düşük 50 negatif PMI farkı; sıfırlar gösterilmez.
+  - Aynı X/renk/balon büyüklüğü ölçeği ve tekrar edilmeyen kelime-POS etiketi.
+  - Bağlam POS ayrımı açıksa gül_NOUN gibi etiket.
+
+07. KOD VE GÜVENLİK
+  - Numara + anlaşılır Türkçe görev adı; kısa yorum, KISS ve tek sorumluluk.
+  - Girdi/çıktı yalnız Excel; PMI görsel çıktıları PNG.
+  - Yalnız önceki tarihsel sıra kontrolü için dâhili CSV referansı vardır;
+    hiçbir aşama yeni CSV sonuç dosyası üretmez.
+  - guvenli_cikti.py özgün haliyle korunur; var olan analiz çıktılarına
+    yazma girişimleri ayrıca durdurulur. Ana projeye dokunulmaz.
+  - Tek komutla test; sonuç klasörlerinde farklı deneyler karışmaz.
+
+NOT: Metot kararları tamam; STANZA tam külliyat testi Windows tarafında
+ayrıca doğrulanmalıdır. KARAR_GECMISI.txt geçmiş tartışmaları içerir.

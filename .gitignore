@@ -1,0 +1,26 @@
+# TEZ_V2_GITHUB_KORUMASI
+# Kodlar git'e girebilir; tam turku sozleri, insan etiketleri ve turetilmis veriler yerelde kalir.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.ipynb_checkpoints/
+Thumbs.db
+.DS_Store
+*.xlsx
+*.xls
+*.xlsm
+*.csv
+*.png
+*.jpg
+*.jpeg
+*.zip
+*.log
+*.pkl
+*.pickle
+*.joblib
+*.parquet
+*.pt
+*.bin
+Testler/CALISMA_*/
